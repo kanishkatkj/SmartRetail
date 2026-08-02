@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from PIL import Image
+import altair as alt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -57,101 +58,133 @@ if not is_api_online:
 
 st.markdown("""
 <style>
-    /* Dark Slate Background & Glassmorphism Theme */
-    .stApp {
-        background-color: #0d1117;
-        color: #c9d1d9;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    /* Global Typography setting without background/foreground color overrides */
+    html, body, [data-testid="stAppViewContainer"], .stApp, .stWidget, .stMarkdown, .stButton, button, input, textarea, select {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
     }
     
     /* Elegant Title and Header Gradients */
     .main-title {
-        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #4f46e5 50%, #7c3aed 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 2.8rem;
+        font-size: 3.2rem;
         font-weight: 800;
         margin-bottom: 0px;
-        text-shadow: 0px 4px 10px rgba(0, 242, 254, 0.15);
+        letter-spacing: -0.02em;
+        text-shadow: 0px 4px 10px rgba(2, 132, 199, 0.05);
     }
     .sub-title {
-        color: #8b949e;
-        font-size: 1.1rem;
-        margin-top: 0px;
-        margin-bottom: 25px;
+        color: #64748b;
+        font-size: 1.15rem;
+        margin-top: 5px;
+        margin-bottom: 30px;
+        font-weight: 500;
     }
     
-    /* Custom Neon Metric Cards */
+    /* Custom Glassmorphic Light Cards */
     .metric-card {
-        background: rgba(22, 27, 34, 0.6);
-        border: 1px solid rgba(56, 139, 253, 0.2);
-        border-radius: 12px;
-        padding: 20px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
         text-align: center;
-        transition: transform 0.3s ease, border-color 0.3s ease;
-        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.03) 0%, rgba(79, 70, 229, 0) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .metric-card:hover::before {
+        opacity: 1;
     }
     .metric-card:hover {
         transform: translateY(-5px);
-        border-color: rgba(56, 139, 253, 0.6);
+        border-color: #3b82f6;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15), 0 8px 10px -6px rgba(59, 130, 246, 0.15);
     }
     .metric-title {
-        color: #8b949e;
-        font-size: 0.9rem;
+        color: #64748b;
+        font-size: 0.85rem;
         font-weight: 600;
         text-transform: uppercase;
-        margin-bottom: 8px;
+        letter-spacing: 0.05em;
+        margin-bottom: 10px;
     }
     .metric-value {
-        font-size: 2.2rem;
+        font-size: 2.6rem;
         font-weight: 800;
-        color: #58a6ff;
+        background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.1));
+    }
+    .metric-value-green {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        -webkit-background-clip: text !important;
+        background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.15)) !important;
     }
     
     /* Connection Badges */
     .status-badge-api {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
         color: white;
-        padding: 5px 12px;
+        padding: 6px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.8rem;
         display: inline-block;
+        box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
     }
     .status-badge-local {
-        background: linear-gradient(135deg, #f12711 0%, #f5af19 100%);
+        background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
         color: white;
-        padding: 5px 12px;
+        padding: 6px 14px;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.8rem;
         display: inline-block;
+        box-shadow: 0 2px 10px rgba(245, 158, 11, 0.2);
     }
     
-    /* Sidebar adjustments */
-    section[data-testid="stSidebar"] {
-        background-color: #161b22 !important;
-        border-right: 1px solid rgba(48, 54, 61, 0.8) !important;
+    /* Code logs */
+    code, pre {
+        font-family: 'JetBrains Mono', monospace !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
     st.image("https://images.unsplash.com/photo-1542744094-3a31f103e35f?q=80&w=200", use_container_width=True)
-    st.markdown("<h2 style='text-align: center; color: #58a6ff;'>System Controls</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #0284c7; font-weight: 800; font-size: 1.6rem;'>System Controls</h2>", unsafe_allow_html=True)
     
     if is_api_online:
-        st.markdown("<div style='text-align: center;'><span class='status-badge-api'>🟢 REST API CONNECTED</span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; margin-bottom: 15px;'><span class='status-badge-api'>🟢 REST API CONNECTED</span></div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div style='text-align: center;'><span class='status-badge-local'>🟠 LOCAL FALLBACK ACTIVE</span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; margin-bottom: 15px;'><span class='status-badge-local'>🟠 LOCAL FALLBACK ACTIVE</span></div>", unsafe_allow_html=True)
         
-    st.markdown("<hr style='border-color: rgba(48,54,61,0.8);'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color: #e2e8f0;'/>", unsafe_allow_html=True)
     
     st.markdown("### Model Versions")
     st.write("🤖 **Face Recognizer**: OpenCV LBPH (v1.0)")
     st.write("📦 **Product Classifier**: PyTorch MobileNetV2")
     st.write("💬 **Sentiment/Chatbot**: TF-IDF + Logistic Reg.")
     
-    st.markdown("<hr style='border-color: rgba(48,54,61,0.8);'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color: #e2e8f0;'/>", unsafe_allow_html=True)
     
     st.markdown("### Quick Resources")
     st.markdown("[📖 API Swagger Docs (Local)](http://localhost:8000/docs)")
@@ -164,6 +197,8 @@ with col1:
     st.markdown("<h1 class='main-title'>Smart Retail Intelligence</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Unified Customer Loyalty Analytics & NLP Feedback Processing Platform</p>", unsafe_allow_html=True)
 with col2:
+    st.write("")
+    st.write("")
     if st.button("🔄 Refresh Data"):
         st.rerun()
 
@@ -235,7 +270,7 @@ with c4:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-title">Sentiment Health Score</div>
-        <div class="metric-value" style="color: #38ef7d;">{sentiment_health}</div>
+        <div class="metric-value metric-value-green">{sentiment_health}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -247,6 +282,15 @@ tab_vision, tab_nlp, tab_chatbot, tab_analytics = st.tabs([
     "💬 Support Chatbot", 
     "📊 Loyalty & Visit Analytics"
 ])
+
+# Altair light mode configuration template
+altair_theme_config = {
+    "gridColor": "rgba(226, 232, 240, 0.8)",
+    "domainColor": "rgba(203, 213, 225, 1)",
+    "tickColor": "rgba(203, 213, 225, 1)",
+    "labelColor": "#475569",
+    "titleColor": "#475569"
+}
 
 with tab_vision:
     st.markdown("### Image Processing and Deep Learning Suite")
@@ -353,20 +397,20 @@ with tab_vision:
                         if res.get("recognized", False):
                             st.balloons()
                             st.markdown(f"""
-                            <div style="background: rgba(56, 139, 253, 0.1); border: 2px solid #58a6ff; border-radius: 12px; padding: 25px; margin-top: 15px;">
-                                <h3 style="color: #58a6ff; margin-top: 0px;">Welcome Back, {res['name']}!</h3>
-                                <p>👤 <b>Customer ID</b>: {res['customer_id']}</p>
-                                <p>⭐ <b>Loyalty Club Points</b>: <span style="font-size: 1.2rem; color: #38ef7d; font-weight: 700;">{res['loyalty_points']}</span></p>
-                                <p>⏰ <b>Last Visited</b>: {res['last_visit']}</p>
-                                <p>📉 <b>LBPH Distance Confidence</b>: {res['confidence_score']:.2f}</p>
+                            <div style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.1) 100%); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 16px; padding: 25px; margin-top: 15px; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.08);">
+                                <h3 style="color: #0284c7; margin-top: 0px; font-weight: 800;">Welcome Back, {res['name']}!</h3>
+                                <p style="margin: 8px 0; color: #334155;">👤 <b>Customer ID</b>: {res['customer_id']}</p>
+                                <p style="margin: 8px 0; color: #334155;">⭐ <b>Loyalty Club Points</b>: <span style="font-size: 1.25rem; color: #059669; font-weight: 800;">{res['loyalty_points']}</span></p>
+                                <p style="margin: 8px 0; color: #334155;">⏰ <b>Last Visited</b>: {res['last_visit']}</p>
+                                <p style="margin: 8px 0; color: #64748b; font-size: 0.9rem;">📉 <b>LBPH Distance Confidence</b>: {res['confidence_score']:.2f}</p>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
                             st.markdown(f"""
-                            <div style="background: rgba(248, 81, 73, 0.1); border: 2px solid #f85149; border-radius: 12px; padding: 25px; margin-top: 15px; margin-bottom: 15px;">
-                                <h3 style="color: #f85149; margin-top: 0px;">Unknown Visitor Detected</h3>
-                                <p>We could not match this face to any consenting member in our loyalty database.</p>
-                                <p>📉 <b>Confidence score</b>: {res.get('confidence_score', 0.0):.2f}</p>
+                            <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(220, 38, 38, 0.1) 100%); border: 1px solid rgba(220, 38, 38, 0.25); border-radius: 16px; padding: 25px; margin-top: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.05);">
+                                <h3 style="color: #dc2626; margin-top: 0px; font-weight: 800;">Unknown Visitor Detected</h3>
+                                <p style="color: #334155;">We could not match this face to any consenting member in our loyalty database.</p>
+                                <p style="margin: 8px 0; color: #64748b; font-size: 0.9rem;">📉 <b>Confidence score</b>: {res.get('confidence_score', 0.0):.2f}</p>
                             </div>
                             """, unsafe_allow_html=True)
                             st.session_state.show_register = True
@@ -389,7 +433,27 @@ with tab_vision:
                         
                         probs = res["category_probabilities"]
                         df_probs = pd.DataFrame(list(probs.items()), columns=["Category", "Probability"])
-                        st.bar_chart(df_probs.set_index("Category"))
+                        
+                        # Light mode customized Altair chart
+                        cv_chart = alt.Chart(df_probs).mark_bar(
+                            cornerRadiusTopLeft=8,
+                            cornerRadiusTopRight=8,
+                            color="#0284c7"
+                        ).encode(
+                            x=alt.X('Category:N', sort='-y', axis=alt.Axis(labelAngle=-45, title=None)),
+                            y=alt.Y('Probability:Q', axis=alt.Axis(format='%', title='Confidence')),
+                            tooltip=['Category', alt.Tooltip('Probability:Q', format='.2%')]
+                        ).properties(
+                            height=300
+                        ).configure_view(
+                            strokeWidth=0
+                        ).configure_axis(
+                            gridColor=altair_theme_config["gridColor"],
+                            domainColor=altair_theme_config["domainColor"],
+                            labelColor=altair_theme_config["labelColor"],
+                            titleColor=altair_theme_config["titleColor"]
+                        )
+                        st.altair_chart(cv_chart, use_container_width=True)
                     except Exception as e:
                         st.error(f"Error during product classification: {e}")
             
@@ -464,19 +528,44 @@ with tab_nlp:
                     confidence = res["confidence"]
                     probs = res["probabilities"]
                     
-                    sentiment_color = "#38ef7d" if sentiment == "positive" else ("#f85149" if sentiment == "negative" else "#f5af19")
+                    sentiment_color = "#10b981" if sentiment == "positive" else ("#ef4444" if sentiment == "negative" else "#f59e0b")
                     
                     st.markdown(f"""
-                    <div style="background: rgba(22, 27, 34, 0.8); border: 2px solid {sentiment_color}; border-radius: 12px; padding: 20px; text-align: center;">
-                        <h4 style="color: #8b949e; text-transform: uppercase; margin: 0;">Predicted Sentiment</h4>
-                        <h2 style="color: {sentiment_color}; margin: 10px 0; font-size: 2.2rem; font-weight: 800;">{sentiment.upper()}</h2>
-                        <p style="margin: 0; color: #8b949e;">Model Confidence: <b>{confidence * 100:.2f}%</b></p>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 6px solid {sentiment_color}; border-radius: 12px; padding: 24px; text-align: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);">
+                        <h4 style="color: #64748b; text-transform: uppercase; margin: 0; font-size: 0.85rem; letter-spacing: 0.05em; font-weight: 600;">Predicted Sentiment</h4>
+                        <h2 style="color: {sentiment_color}; margin: 10px 0; font-size: 2.4rem; font-weight: 800;">{sentiment.upper()}</h2>
+                        <p style="margin: 0; color: #475569;">Model Confidence: <b>{confidence * 100:.2f}%</b></p>
                     </div>
                     """, unsafe_allow_html=True)
                     
                     st.write("")
                     df_s_probs = pd.DataFrame(list(probs.items()), columns=["Sentiment Class", "Probability"])
-                    st.bar_chart(df_s_probs.set_index("Sentiment Class"))
+                    
+                    # Sentiment probability chart
+                    sentiment_colors = alt.Scale(
+                        domain=['positive', 'neutral', 'negative'],
+                        range=['#10b981', '#f59e0b', '#ef4444']
+                    )
+                    
+                    chart_s = alt.Chart(df_s_probs).mark_bar(
+                        cornerRadiusTopLeft=8,
+                        cornerRadiusTopRight=8
+                    ).encode(
+                        x=alt.X('Sentiment Class:N', sort=['positive', 'neutral', 'negative'], title=None),
+                        y=alt.Y('Probability:Q', axis=alt.Axis(format='%', title='Confidence')),
+                        color=alt.Color('Sentiment Class:N', scale=sentiment_colors, legend=None),
+                        tooltip=['Sentiment Class', alt.Tooltip('Probability:Q', format='.2%')]
+                    ).properties(
+                        height=250
+                    ).configure_view(
+                        strokeWidth=0
+                    ).configure_axis(
+                        gridColor=altair_theme_config["gridColor"],
+                        domainColor=altair_theme_config["domainColor"],
+                        labelColor=altair_theme_config["labelColor"],
+                        titleColor=altair_theme_config["titleColor"]
+                    )
+                    st.altair_chart(chart_s, use_container_width=True)
                 except Exception as e:
                     st.error(f"Error during sentiment analysis: {e}")
         else:
@@ -492,13 +581,14 @@ with tab_chatbot:
         ]
         
     for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
+        avatar = "👤" if msg["role"] == "user" else "🤖"
+        with st.chat_message(msg["role"], avatar=avatar):
             st.write(msg["content"])
             
     user_query = st.chat_input("Ask a question (e.g. 'when do you close today?' or 'track my order')")
     
     if user_query:
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="👤"):
             st.write(user_query)
         st.session_state.messages.append({"role": "user", "content": user_query})
         
@@ -516,7 +606,7 @@ with tab_chatbot:
                 strategy = res["strategy"]
                 conf = res["confidence"]
                 
-                with st.chat_message("assistant"):
+                with st.chat_message("assistant", avatar="🤖"):
                     st.write(bot_reply)
                     st.caption(f"Intent classified: **{intent}** | Confidence: **{conf:.2f}** | Strategy: **{strategy.upper()}**")
                 
@@ -534,7 +624,23 @@ with tab_analytics:
         st.markdown("#### Sentiment Distribution")
         s_dist = stats["sentiment_distribution"]
         df_dist = pd.DataFrame(list(s_dist.items()), columns=["Sentiment", "Count"])
-        st.bar_chart(df_dist.set_index("Sentiment"))
+        
+        sentiment_colors = alt.Scale(
+            domain=['positive', 'neutral', 'negative'],
+            range=['#10b981', '#f59e0b', '#ef4444']
+        )
+        
+        # Donut Chart for Sentiment Distribution
+        donut = alt.Chart(df_dist).mark_arc(innerRadius=55, outerRadius=90).encode(
+            theta=alt.Theta(field="Count", type="quantitative"),
+            color=alt.Color(field="Sentiment", type="nominal", scale=sentiment_colors, title="Sentiment"),
+            tooltip=["Sentiment", "Count"]
+        ).properties(
+            height=250
+        ).configure_view(
+            strokeWidth=0
+        )
+        st.altair_chart(donut, use_container_width=True)
         
         st.markdown("#### Customer Loyalty Visit Logs")
         df_visits = pd.DataFrame(stats["visit_logs"])
@@ -543,10 +649,35 @@ with tab_analytics:
     with an_col2:
         st.markdown("#### Customer Visits Breakdown")
         df_breakdown = pd.DataFrame({
-            "Customer Segment": ["Recognized Loyalty Members", "Unknown Guest Visitors"],
-            "Count": [stats["known_customer_visits"], stats["unknown_customer_visits"]]
+            "Segment": ["Loyalty Members", "Guest Visitors"],
+            "Visits": [stats["known_customer_visits"], stats["unknown_customer_visits"]]
         })
-        st.bar_chart(df_breakdown.set_index("Customer Segment"))
+        
+        segment_colors = alt.Scale(
+            domain=['Loyalty Members', 'Guest Visitors'],
+            range=['#0284c7', '#94a3b8']
+        )
+        
+        # Styled Visited Segment Chart
+        visit_chart = alt.Chart(df_breakdown).mark_bar(
+            cornerRadiusTopLeft=8,
+            cornerRadiusTopRight=8
+        ).encode(
+            x=alt.X('Segment:N', title=None),
+            y=alt.Y('Visits:Q', axis=alt.Axis(title='Number of Visits')),
+            color=alt.Color('Segment:N', scale=segment_colors, legend=None),
+            tooltip=['Segment', 'Visits']
+        ).properties(
+            height=250
+        ).configure_view(
+            strokeWidth=0
+        ).configure_axis(
+            gridColor=altair_theme_config["gridColor"],
+            domainColor=altair_theme_config["domainColor"],
+            labelColor=altair_theme_config["labelColor"],
+            titleColor=altair_theme_config["titleColor"]
+        )
+        st.altair_chart(visit_chart, use_container_width=True)
         
         st.markdown("#### Customer Sentiment Logs (Latest Feed)")
         df_sent = pd.DataFrame(stats["sentiment_logs"])
